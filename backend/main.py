@@ -1,45 +1,26 @@
-
 from fastapi import FastAPI
 import pandas as pd
-from sklearn.cluster import KMeans
-from datetime import datetime
-import uvicorn
+from rfm_model import get_rfm_clusters
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Load dataset
-data = pd.read_csv("online_retail.csv")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Clean data
-data = data.dropna(subset=['Customer ID'])
-data['InvoiceDate'] = pd.to_datetime(data['InvoiceDate'])
-data['TotalPrice'] = data['Quantity'] * data['Price']
+DATA_FILE = "online_retail.csv"
+df = pd.read_csv(DATA_FILE)
 
-# RFM calculation
-def get_rfm():
-    NOW = datetime(2011, 12, 10)
-    rfm = data.groupby('Customer ID').agg({
-        'InvoiceDate': lambda x: (NOW - x.max()).days,
-        'Invoice': 'count',
-        'TotalPrice': 'sum'
-    }).rename(columns={'InvoiceDate': 'Recency', 'Invoice': 'Frequency', 'TotalPrice': 'Monetary'})
-    return rfm
+@app.get("/")
+def home():
+    return {"message": "Shopping Analytics API running"}
 
-@app.get("/rfm")
-def rfm_data():
-    return get_rfm().reset_index().to_dict(orient='records')
-
-@app.get("/clusters")
-def clusters():
-    rfm = get_rfm()
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    rfm['Cluster'] = kmeans.fit_predict(rfm[['Recency', 'Frequency', 'Monetary']])
-    return rfm.reset_index().to_dict(orient='records')
-
-@app.get("/top_products")
-def top_products():
-    top_products = data.groupby('Description')['Quantity'].sum().sort_values(ascending=False).head(10)
-    return top_products.reset_index().to_dict(orient='records')
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.get("/api/rfm")
+def rfm_analysis():
+    rfm_data = get_rfm_clusters(df)
+    return rfm_data.to_dict(orient="records")
