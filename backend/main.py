@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -7,7 +8,7 @@ import uvicorn
 app = FastAPI()
 
 # Load dataset
-data = pd.read_csv("data/online_retail.csv")
+data = pd.read_csv("online_retail.csv")
 
 # Clean data
 data = data.dropna(subset=['Customer ID'])

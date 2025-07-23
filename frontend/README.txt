@@ -1,0 +1,1 @@
+Frontend placeholder (Next.js app to be developed).
