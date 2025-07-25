@@ -6,19 +6,22 @@ import joblib
 import numpy as np
 
 from utils import (
-    load_data,
-    calculate_rfm,
-    explain_shap,
-    explain_lime,
-    get_customer_profile,
-    get_business_rules,
+    load_dataset,
+    get_customer_profile
 )
+
+from explainers import explain_shap, explain_lime
+from rules import get_business_rules
+from rfm_model import get_rfm_clusters
+
+from rfm_model import get_rfm_clusters
 
 app = FastAPI()
 
 # Load dataset
-df = load_data("data/online_retail.csv")
-rfm_df = calculate_rfm(df)
+df = load_dataset("data/online_retail.csv")
+rfm_df = get_rfm_clusters(df)
+
 
 @app.get("/")
 def root():

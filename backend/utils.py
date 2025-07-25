@@ -37,3 +37,23 @@ def load_dataset(csv_path):
 
 def save_dataset(df, csv_path):
     df.to_csv(csv_path, index=False)
+
+def get_customer_profile(df, customer_id):
+    try:
+        customer_id = int(customer_id)
+    except ValueError:
+        return {"error": "Invalid customer ID format"}
+
+    customer_data = df[df['Customer ID'] == customer_id]
+
+    if customer_data.empty:
+        return {"error": "Customer ID not found"}
+
+    summary = {
+        "Customer ID": customer_id,
+        "Total Orders": customer_data['Invoice'].nunique(),
+        "Total Spend": (customer_data['Quantity'] * customer_data['Price']).sum(),
+        "Most Purchased Item": customer_data['Description'].mode().iloc[0]
+    }
+
+    return summary
