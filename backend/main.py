@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-import os
+
 
 app = FastAPI()
 
@@ -15,7 +15,7 @@ app.add_middleware(
 )
 
 # Path to CSV
-DATA_FILE = os.path.join("data", "online_retail.csv")
+DATA_FILE = "data/online_retail.csv"
 
 # Load dataset once (optional for simplicity)
 @app.on_event("startup")
