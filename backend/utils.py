@@ -6,7 +6,7 @@ from sklearn.cluster import KMeans
 import shap
 import lime
 import lime.lime_tabular
-from baconpy import Bacon
+import Bacon
 import joblib
 
 def load_data(path):
