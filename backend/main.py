@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_FILE = "online_retail.csv"
+DATA_FILE = "/data/online_retail.csv"
 df = pd.read_csv(DATA_FILE)
 
 @app.get("/")
