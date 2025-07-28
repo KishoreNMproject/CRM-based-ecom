@@ -38,9 +38,9 @@ def generate_hash_for_machine():
     raw = ''.join([str(v) for v in info.values() if v])
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
-def load_dataset(csv_path):
-    if os.path.exists(csv_path):
-        return pd.read_csv(csv_path)
+def load_dataset(df):
+    if os.path.exists(df):
+        return pd.read_csv(df)
     return pd.DataFrame()
 
 def save_dataset(df, csv_path):
