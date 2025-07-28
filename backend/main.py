@@ -47,5 +47,7 @@ def lime_explanation(customer_id: str):
     return explain_lime(df, customer_id)
 
 @app.get("/rules")
-def business_rules():
-    return get_business_rules(rfm_df)
+async def rules():
+    rfm_df = pd.read_csv("rfm_output.csv")
+    rules_result = get_business_rules(rfm_df)
+    return rules_result
