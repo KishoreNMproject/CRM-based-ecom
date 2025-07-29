@@ -1,32 +1,64 @@
-import shap
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+# backend/explainer.py
+
 import pandas as pd
+from utils import explain_shap, explain_lime, get_business_rules, load_dataset
 
+# Shared dataset path — adjust if you're using a different file
+DEFAULT_DATASET_PATH = "data/online_retail.csv"
 
-def explain_shap(df, sample_size=100):
-    # Drop NaNs and sample to reduce memory usage
-    df = df.dropna()
-    if sample_size and len(df) > sample_size:
-        df = df.sample(sample_size, random_state=42)
+def fetch_dataset(path: str = DEFAULT_DATASET_PATH) -> pd.DataFrame:
+    df = load_dataset(path)
+    if df.empty:
+        raise ValueError("Dataset is empty or not found.")
+    return df
 
-    X = df.iloc[:, :-1]
-    y = df.iloc[:, -1]
+def get_shap_results(target_column: str = "Country", path: str = DEFAULT_DATASET_PATH):
+    try:
+        df = fetch_dataset(path)
+        result = explain_shap(df, target_column)
+        return {
+            "status": "success",
+            "type": "shap",
+            "target": target_column,
+            "feature_names": result.get("feature_names", []),
+            "mean_abs_shap_values": result.get("mean_abs_shap_values", [])
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "type": "shap",
+            "message": str(e)
+        }
 
-    model = RandomForestClassifier(n_estimators=50, max_depth=5, random_state=42)
-    model.fit(X, y)
+def get_lime_results(target_column: str = "Country", path: str = DEFAULT_DATASET_PATH):
+    try:
+        df = fetch_dataset(path)
+        result = explain_lime(df, target_column)
+        return {
+            "status": "success",
+            "type": "lime",
+            "target": target_column,
+            "lime_explanation": result
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "type": "lime",
+            "message": str(e)
+        }
 
-    # Use TreeExplainer with low-memory default settings
-    explainer = shap.TreeExplainer(model, feature_perturbation="tree_path_dependent")
-    shap_values = explainer.shap_values(X, approximate=True)
-
-    # Summarize feature importances (mean absolute value)
-    mean_abs_shap = np.abs(shap_values).mean(axis=0)
-
-    # Return minimal JSON-friendly output
-    return {
-        "features": list(X.columns),
-        "mean_abs_shap": mean_abs_shap.tolist()
-    }
-def explain_lime(df, customer_id):
-    return {"lime_explanation": f"LIME output for customer {customer_id}"}
+def get_rule_insights(path: str = "rfm_output.csv"):
+    try:
+        rfm_df = pd.read_csv(path)
+        rules = get_business_rules(rfm_df)
+        return {
+            "status": "success",
+            "type": "rules",
+            "rules": rules
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "type": "rules",
+            "message": str(e)
+        }
