@@ -1,5 +1,3 @@
-# backend/utils.py
-
 import platform
 import psutil
 import uuid
@@ -18,6 +16,7 @@ import lime.lime_tabular
 
 def get_machine_info():
     try:
+        total_ram_gb = psutil.virtual_memory().total / (1024.0 ** 3)
         return {
             "platform": platform.system(),
             "platform-release": platform.release(),
@@ -26,9 +25,10 @@ def get_machine_info():
             "hostname": socket.gethostname(),
             "ip-address": socket.gethostbyname(socket.gethostname()),
             "mac-address": ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
-                                     for ele in range(0,8*6,8)][::-1]),
+                                     for ele in range(0, 8*6, 8)][::-1]),
             "processor": platform.processor(),
-            "ram": f"{round(psutil.virtual_memory().total / (1024.0 **3))} GB"
+            "ram": round(total_ram_gb, 2),           # numeric for logic
+            "ram_str": f"{round(total_ram_gb)} GB"   # string for display
         }
     except Exception as e:
         return {"error": str(e)}
@@ -38,9 +38,9 @@ def generate_hash_for_machine():
     raw = ''.join([str(v) for v in info.values() if v])
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
-def load_dataset(df):
-    if os.path.exists(df):
-        return pd.read_csv(df)
+def load_dataset(path="data/online_retail.csv"):
+    if os.path.exists(path):
+        return pd.read_csv(path)
     return pd.DataFrame()
 
 def save_dataset(df, csv_path):
@@ -69,7 +69,7 @@ def get_customer_profile(df, customer_id):
 def calculate_rfm(df):
     df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
     snapshot_date = df['InvoiceDate'].max() + pd.Timedelta(days=1)
-    
+
     rfm = df.groupby('Customer ID').agg({
         'InvoiceDate': lambda x: (snapshot_date - x.max()).days,
         'Invoice': 'nunique',
@@ -84,7 +84,7 @@ def calculate_rfm(df):
     rfm['Segment'] = kmeans.fit_predict(rfm_scaled)
     return rfm
 
-def explain_shap(df, target_column, num_rows=500):
+def explain_shap(df, target_column, num_rows=50):
     df = df.dropna().sample(min(num_rows, len(df)), random_state=1)
     X = df.drop(columns=[target_column])
     y = df[target_column]
@@ -92,17 +92,20 @@ def explain_shap(df, target_column, num_rows=500):
     if not all(np.issubdtype(dt, np.number) for dt in X.dtypes):
         X = pd.get_dummies(X)
 
-    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=1)
     model = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=1)
-    model.fit(X_train, y_train)
+    model.fit(X, y)
 
-    explainer = shap.Explainer(model.predict, X_train, algorithm="permutation")
-    shap_values = explainer(X_train[:50], check_additivity=False)
-    summary = shap_values.values.mean(axis=0)
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X)
+
+    if isinstance(shap_values, list):  # For classification
+        shap_values = shap_values[0]
+
+    mean_abs_shap = np.abs(shap_values).mean(axis=0)
 
     return {
-        "feature_names": list(X_train.columns),
-        "mean_abs_shap_values": list(np.abs(summary))
+        "feature_names": list(X.columns),
+        "mean_abs_shap_values": list(mean_abs_shap)
     }
 
 def explain_lime(df, target_column, num_features=5):
@@ -113,18 +116,17 @@ def explain_lime(df, target_column, num_features=5):
     if not all(np.issubdtype(dt, np.number) for dt in X.dtypes):
         X = pd.get_dummies(X)
 
-    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=1)
     model = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=1)
-    model.fit(X_train, y_train)
+    model.fit(X, y)
 
     explainer = lime.lime_tabular.LimeTabularExplainer(
-        X_train.values,
-        feature_names=X_train.columns.tolist(),
-        class_names=np.unique(y_train).astype(str).tolist(),
+        X.values,
+        feature_names=X.columns.tolist(),
+        class_names=np.unique(y).astype(str).tolist(),
         discretize_continuous=True
     )
 
-    exp = explainer.explain_instance(X_train.iloc[0].values, model.predict_proba, num_features=num_features)
+    exp = explainer.explain_instance(X.iloc[0].values, model.predict_proba, num_features=num_features)
     explanation = dict(exp.as_list())
     return explanation
 
