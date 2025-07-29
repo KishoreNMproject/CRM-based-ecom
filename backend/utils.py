@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 import shap
 import lime
 import lime.lime_tabular
-
+from datetime import datetime
 def get_machine_info():
     try:
         total_ram_gb = psutil.virtual_memory().total / (1024.0 ** 3)
@@ -65,22 +65,42 @@ def get_customer_profile(df, customer_id):
 
     return summary
 
+
+
 def calculate_rfm(df):
-    df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
-    snapshot_date = df['InvoiceDate'].max() + pd.Timedelta(days=1)
-    
-    rfm = df.groupby('Customer ID').agg({
-        'InvoiceDate': lambda x: (snapshot_date - x.max()).days,
-        'Invoice': 'nunique',
-        'Price': 'sum'
-    }).reset_index()
+    # Basic cleaning
+    df = df.dropna(subset=["CustomerID"])
+    df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"])
+    df["TotalAmount"] = df["Quantity"] * df["UnitPrice"]
 
-    rfm.columns = ['Customer ID', 'Recency', 'Frequency', 'Monetary']
+    # Latest date in data + 1
+    snapshot_date = df["InvoiceDate"].max() + pd.Timedelta(days=1)
+
+    # RFM Calculation
+    rfm = df.groupby("CustomerID").agg({
+        "InvoiceDate": lambda x: (snapshot_date - x.max()).days,
+        "InvoiceNo": "nunique",
+        "TotalAmount": "sum"
+    })
+
+    rfm.columns = ["Recency", "Frequency", "Monetary"]
+
+    # Remove negative or zero values before clustering
+    rfm = rfm[rfm["Monetary"] > 0]
+
+    # Normalize for clustering
+    from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler()
-    rfm_scaled = scaler.fit_transform(rfm[['Recency', 'Frequency', 'Monetary']])
+    rfm_scaled = scaler.fit_transform(rfm)
 
-    kmeans = KMeans(n_clusters=4, random_state=1, n_init=10)
-    rfm['Segment'] = kmeans.fit_predict(rfm_scaled)
+    # KMeans Clustering
+    kmeans = KMeans(n_clusters=4, random_state=42)
+    rfm["Cluster"] = kmeans.fit_predict(rfm_scaled)
+
+    # Save output
+    os.makedirs("data", exist_ok=True)
+    rfm.to_csv("data/rfm_output.csv")
+
     return rfm
 
 def explain_shap(df, target_column, num_rows=500):
