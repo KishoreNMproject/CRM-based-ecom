@@ -1,198 +1,110 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from typing import List
 import pandas as pd
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score
 import joblib
-import numpy as np
 import os
+import json
+from datetime import datetime
 
 app = FastAPI()
 
-# Load dataset (CSV or PKL)
-DATA_PATH = "full_customer_features.pkl"
-MODEL_PATH = "kmeans_model.pkl"
-SCALER_PATH = "scaler.pkl"
+# Paths
+DATA_FILE = "full_customer_features.pkl"
+MODEL_FILE = "kmeans_model.pkl"
+SCALER_FILE = "scaler.pkl"
+STATUS_FILE = "training_status.json"
 
-def load_data():
-    if os.path.exists(DATA_PATH):
-        if DATA_PATH.endswith(".pkl"):
-            return pd.read_pickle(DATA_PATH)
-        elif DATA_PATH.endswith(".csv"):
-            return pd.read_csv(DATA_PATH)
-    return pd.DataFrame()
+# Templates and static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-def find_best_k(data):
-    distortions = []
-    K_range = range(2, 11)
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        kmeans.fit(data)
-        distortions.append(kmeans.inertia_)
-    # Use the elbow method manually or use silhouette score
-    best_k = 3
-    best_score = -1
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        labels = kmeans.fit_predict(data)
-        score = silhouette_score(data, labels)
-        if score > best_score:
-            best_score = score
-            best_k = k
-    return best_k
+# HTML Home Page
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/train")
+# Route: Train the model
+@app.get("/train")
 def train_model():
-    df = load_data()
-    if df.empty:
-        raise HTTPException(status_code=404, detail="Dataset not found or empty")
+    if not os.path.exists(DATA_FILE):
+        raise HTTPException(status_code=404, detail="Dataset not found")
 
-    # Preprocessing
+    df = pd.read_pickle(DATA_FILE)
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(df.values)
+    X_scaled = scaler.fit_transform(df)
 
-    # Find best k using silhouette method
-    best_k = find_best_k(X_scaled)
+    inertias = []
+    for k in range(2, 10):
+        model = KMeans(n_clusters=k, n_init=10, random_state=42)
+        model.fit(X_scaled)
+        inertias.append(model.inertia_)
 
-    # Train KMeans
-    kmeans = KMeans(n_clusters=best_k, random_state=42)
-    kmeans.fit(X_scaled)
+    diff = np.diff(inertias)
+    k_opt = diff.argmin() + 2
 
-    # Save model and scaler
-    joblib.dump(kmeans, MODEL_PATH)
-    joblib.dump(scaler, SCALER_PATH)
+    model = KMeans(n_clusters=k_opt, n_init=10, random_state=42)
+    model.fit(X_scaled)
 
-    return {
-        "status": "trained",
-        "clusters": best_k,
-        "inertia": kmeans.inertia_,
-        "samples": len(df)
-    }
+    joblib.dump(model, MODEL_FILE)
+    joblib.dump(scaler, SCALER_FILE)
 
-class PredictRequest(BaseModel):
-    features: list[list[float]]  # 2D List
+    with open(STATUS_FILE, "w") as f:
+        json.dump({
+            "trained_at": str(datetime.now()),
+            "n_clusters": k_opt,
+            "data_points": len(df)
+        }, f)
 
-@app.post("/predict")
-def predict(req: PredictRequest):
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-        raise HTTPException(status_code=400, detail="Model not trained yet")
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score
-import joblib
-import numpy as np
-import os
+    return {"message": "✅ Model trained", "clusters": k_opt}
 
-app = FastAPI()
-
-# Load dataset (CSV or PKL)
-DATA_PATH = "full_customer_features.pkl"
-MODEL_PATH = "kmeans_model.pkl"
-SCALER_PATH = "scaler.pkl"
-
-def load_data():
-    if os.path.exists(DATA_PATH):
-        if DATA_PATH.endswith(".pkl"):
-            return pd.read_pickle(DATA_PATH)
-        elif DATA_PATH.endswith(".csv"):
-            return pd.read_csv(DATA_PATH)
-    return pd.DataFrame()
-
-def find_best_k(data):
-    distortions = []
-    K_range = range(2, 11)
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        kmeans.fit(data)
-        distortions.append(kmeans.inertia_)
-    # Use the elbow method manually or use silhouette score
-    best_k = 3
-    best_score = -1
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        labels = kmeans.fit_predict(data)
-        score = silhouette_score(data, labels)
-        if score > best_score:
-            best_score = score
-            best_k = k
-    return best_k
-
-@app.post("/train")
-def train_model():
-    df = load_data()
-    if df.empty:
-        raise HTTPException(status_code=404, detail="Dataset not found or empty")
-
-    # Preprocessing
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(df.values)
-
-    # Find best k using silhouette method
-    best_k = find_best_k(X_scaled)
-
-    # Train KMeans
-    kmeans = KMeans(n_clusters=best_k, random_state=42)
-    kmeans.fit(X_scaled)
-
-    # Save model and scaler
-    joblib.dump(kmeans, MODEL_PATH)
-    joblib.dump(scaler, SCALER_PATH)
-
-    return {
-        "status": "trained",
-        "clusters": best_k,
-        "inertia": kmeans.inertia_,
-        "samples": len(df)
-    }
-
-class PredictRequest(BaseModel):
-    features: list[list[float]]  # 2D List
-
-@app.post("/predict")
-def predict(req: PredictRequest):
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-        raise HTTPException(status_code=400, detail="Model not trained yet")
-
-    kmeans = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-
-    X = np.array(req.features)
-    X_scaled = scaler.transform(X)
-    preds = kmeans.predict(X_scaled)
-
-    return {"labels": preds.tolist()}
-
+# Route: Check training status
 @app.get("/status")
 def status():
-    if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-        return {
-            "trained": True,
-            "n_clusters": model.n_clusters,
-            "inertia": model.inertia_
-        }
-    return {"trained": False}
+    if os.path.exists(STATUS_FILE):
+        with open(STATUS_FILE) as f:
+            return json.load(f)
+    return {"message": "Model not trained yet"}
 
-    kmeans = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
+# Route: Predict with JSON payload
+class InputFeatures(BaseModel):
+    features: List[float]
 
-    X = np.array(req.features)
-    X_scaled = scaler.transform(X)
-    preds = kmeans.predict(X_scaled)
+@app.post("/predict")
+def predict(input: InputFeatures):
+    if not os.path.exists(MODEL_FILE):
+        raise HTTPException(status_code=400, detail="Train the model first")
+    
+    model = joblib.load(MODEL_FILE)
+    scaler = joblib.load(SCALER_FILE)
 
-    return {"labels": preds.tolist()}
+    input_scaled = scaler.transform([input.features])
+    cluster = model.predict(input_scaled)[0]
 
-@app.get("/status")
-def status():
-    if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-        return {
-            "trained": True,
-            "n_clusters": model.n_clusters,
-            "inertia": model.inertia_
-        }
-    return {"trained": False}
+    return {"cluster": int(cluster)}
+
+# HTML interface to test prediction from form
+@app.post("/predict_form", response_class=HTMLResponse)
+async def predict_form(request: Request, feature_input: str = Form(...)):
+    features = [float(x.strip()) for x in feature_input.split(",")]
+
+    if not os.path.exists(MODEL_FILE):
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "prediction_result": "❌ Train the model first."
+        })
+
+    model = joblib.load(MODEL_FILE)
+    scaler = joblib.load(SCALER_FILE)
+    pred = model.predict(scaler.transform([features]))[0]
+
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "prediction_result": f"Predicted Cluster: {pred}"
+    })
