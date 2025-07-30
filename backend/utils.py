@@ -41,8 +41,8 @@ def load_dataset(path="data/online_retail.csv"):
     if os.path.exists(path):
         try:
             df = pd.read_csv(path, encoding="ISO-8859-1", parse_dates=["InvoiceDate"], dayfirst=True)
-            df.dropna(subset=["CustomerID"], inplace=True)
-            df["CustomerID"] = df["CustomerID"].astype(str)
+            df.dropna(subset=["Customer ID"], inplace=True)
+            df["Customer ID"] = df["Customer ID"].astype(str)
             return df
         except Exception as e:
             print(f"Error reading dataset: {e}")
