@@ -4,147 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analyst Dashboard</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(120deg, #e0f7fa, #f1f8e9);
-    }
-    .screen { display: none; }
-    .active { display: block; }
-    .card {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-      border: none;
-      border-radius: 1rem;
-      padding: 2rem;
-      background-color: white;
-    }
-    h1, h2 {
-      font-weight: 700;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script defer src="script.js"></script>
 </head>
 <body>
-  <div class="container py-4">
-    <div id="home" class="screen active text-center">
-      <h1 class="mb-4">📊 Analyst Dashboard</h1>
-      <div class="d-grid gap-3 col-6 mx-auto">
-        <button class="btn btn-primary btn-lg" onclick="navigate('rfm')">RFM</button>
-        <button class="btn btn-success btn-lg" onclick="navigate('shap')">SHAP</button>
-        <button class="btn btn-warning btn-lg" onclick="navigate('lime')">LIME</button>
-        <button class="btn btn-danger btn-lg" onclick="navigate('rules')">Business Rules</button>
-      </div>
-    </div>
+  <h1>📊 Analyst Dashboard</h1>
 
-    <!-- Section Template -->
-    <div id="rfm" class="screen">
-      <div class="card mt-3">
-        <h2>📈 RFM Analysis</h2>
-        <button class="btn btn-secondary mb-2" onclick="navigate('home')">⬅ Back</button>
-        <select class="form-select mb-3" id="rfmChartType">
-          <option value="bar">Bar Chart</option>
-          <option value="pie">Pie Chart</option>
-          <option value="line">Line Chart</option>
-          <option value="scatter">Scatter Plot</option>
-          <option value="histogram">Histogram</option>
-        </select>
-        <button class="btn btn-outline-primary mb-3" onclick="fetchAndRenderChart('rfm')">Generate Chart</button>
-        <canvas id="rfmChart" height="120"></canvas>
-      </div>
-    </div>
+  <button onclick="showScreen('rfm')">RFM</button>
+  <button onclick="showScreen('shap')">SHAP</button>
+  <button onclick="showScreen('lime')">LIME</button>
+  <button onclick="showScreen('rules')">Rules</button>
 
-    <div id="shap" class="screen">
-      <div class="card mt-3">
-        <h2>📊 SHAP Insights</h2>
-        <button class="btn btn-secondary mb-2" onclick="navigate('home')">⬅ Back</button>
-        <select class="form-select mb-3" id="shapChartType">
-          <option value="bar">Bar Chart</option>
-          <option value="pie">Pie Chart</option>
-          <option value="line">Line Chart</option>
-          <option value="scatter">Scatter Plot</option>
-          <option value="histogram">Histogram</option>
-        </select>
-        <button class="btn btn-outline-success mb-3" onclick="fetchAndRenderChart('shap')">Generate Chart</button>
-        <canvas id="shapChart" height="120"></canvas>
-      </div>
-    </div>
-
-    <div id="lime" class="screen">
-      <div class="card mt-3">
-        <h2>📈 LIME Insights</h2>
-        <button class="btn btn-secondary mb-2" onclick="navigate('home')">⬅ Back</button>
-        <select class="form-select mb-3" id="limeChartType">
-          <option value="bar">Bar Chart</option>
-          <option value="pie">Pie Chart</option>
-          <option value="line">Line Chart</option>
-          <option value="scatter">Scatter Plot</option>
-          <option value="histogram">Histogram</option>
-        </select>
-        <button class="btn btn-outline-warning mb-3" onclick="fetchAndRenderChart('lime')">Generate Chart</button>
-        <canvas id="limeChart" height="120"></canvas>
-      </div>
-    </div>
-
-    <div id="rules" class="screen">
-      <div class="card mt-3">
-        <h2>📉 Business Rules</h2>
-        <button class="btn btn-secondary mb-2" onclick="navigate('home')">⬅ Back</button>
-        <select class="form-select mb-3" id="rulesChartType">
-          <option value="bar">Bar Chart</option>
-          <option value="pie">Pie Chart</option>
-          <option value="line">Line Chart</option>
-          <option value="scatter">Scatter Plot</option>
-          <option value="histogram">Histogram</option>
-        </select>
-        <button class="btn btn-outline-danger mb-3" onclick="fetchAndRenderChart('rules')">Generate Chart</button>
-        <canvas id="rulesChart" height="120"></canvas>
-      </div>
-    </div>
+  <div id="rfm" class="screen">
+    <h2>RFM Chart</h2>
+    <select id="rfmValueKey">
+      <option value="Recency">Recency</option>
+      <option value="Frequency">Frequency</option>
+      <option value="Monetary">Monetary</option>
+    </select>
+    <select id="rfmChartType">
+      <option value="bar">Bar</option>
+      <option value="pie">Pie</option>
+      <option value="line">Line</option>
+    </select>
+    <button onclick="fetchDataAndRender('rfm')">Render Chart</button>
+    <canvas id="rfmChart"></canvas>
   </div>
 
-  <script>
-    const backendBase = "https://crm-based-ecom.onrender.com";
-    const chartInstances = {};
-
-    function navigate(screenId) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById(screenId).classList.add('active');
-    }
-
-    async function fetchAndRenderChart(screen) {
-      const chartType = document.getElementById(`${screen}ChartType`).value;
-      try {
-        const res = await fetch(`${backendBase}/${screen}`);
-        const data = await res.json();
-        renderChart(screen, chartType, data);
-      } catch (err) {
-        alert("⚠️ Failed to load data for " + screen + ": " + err.message);
-      }
-    }
-
-    function renderChart(screen, chartType, data) {
-      const ctx = document.getElementById(`${screen}Chart`).getContext('2d');
-      if (chartInstances[screen]) chartInstances[screen].destroy();
-
-      const chartData = {
-        labels: data.labels || Object.keys(data),
-        datasets: [{
-          label: `${screen.toUpperCase()} Chart`,
-          data: data.values || Object.values(data),
-          backgroundColor: "rgba(54, 162, 235, 0.5)",
-          borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 1
-        }]
-      };
-
-      const config = {
-        type: chartType === 'histogram' ? 'bar' : chartType,
-        data: chartData
-      };
-
-      chartInstances[screen] = new Chart(ctx, config);
-    }
-  </script>
+  <div id="shap" class="screen"><h2>SHAP</h2><canvas id="shapChart"></canvas></div>
+  <div id="lime" class="screen"><h2>LIME</h2><canvas id="limeChart"></canvas></div>
+  <div id="rules" class="screen"><h2>Rules</h2><canvas id="rulesChart"></canvas></div>
 </body>
 </html>

@@ -1,0 +1,16 @@
+body {
+  font-family: sans-serif;
+  padding: 20px;
+  background: #f4f4f4;
+}
+.screen {
+  display: none;
+  margin-top: 20px;
+}
+canvas {
+  max-width: 90%;
+  margin-top: 20px;
+}
+button {
+  margin-right: 10px;
+}

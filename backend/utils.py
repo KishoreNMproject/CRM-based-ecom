@@ -39,8 +39,17 @@ def generate_hash_for_machine():
 
 def load_dataset(path="data/online_retail.csv"):
     if os.path.exists(path):
-        return pd.read_csv(path)
-    return pd.DataFrame()
+        try:
+            df = pd.read_csv(path, encoding="ISO-8859-1", parse_dates=["InvoiceDate"], dayfirst=True)
+            df.dropna(subset=["CustomerID"], inplace=True)
+            df["CustomerID"] = df["CustomerID"].astype(str)
+            return df
+        except Exception as e:
+            print(f"Error reading dataset: {e}")
+            return pd.DataFrame()
+    else:
+        print("Dataset not found at:", path)
+        return pd.DataFrame()
 
 def save_dataset(df, csv_path):
     df.to_csv(csv_path, index=False)
