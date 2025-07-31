@@ -1,91 +1,62 @@
 // popup.js
 document.addEventListener("DOMContentLoaded", () => {
-    const analyzeButton = document.getElementById("analyzeDeals");
-    const resultDiv = document.getElementById("result");
-    const loadingDiv = document.getElementById("loading");
-    let currentTabUrl = '';
+  const analyzeButton = document.getElementById("analyzeDeals");
+  const resultDiv = document.getElementById("result");
+  const loadingDiv = document.getElementById("loading");
 
-    // Function to update the popup UI based on the cached status and result
-    function updatePopupUI() {
-        if (!currentTabUrl) {
-            resultDiv.innerText = "Could not identify the current page URL.";
-            return;
-        }
-
-        const resultKey = `analysis_result_${currentTabUrl}`;
-        const statusKey = `analysis_status_${currentTabUrl}`;
-
-        chrome.storage.local.get([resultKey, statusKey], (data) => {
-            const status = data[statusKey];
-            const result = data[resultKey];
-
-            loadingDiv.style.display = "none";
-            analyzeButton.disabled = false;
-
-            switch (status) {
-                case "fetching":
-                    loadingDiv.style.display = "block";
-                    loadingDiv.innerText = "AI analysis is running in the background...";
-                    analyzeButton.disabled = true;
-                    resultDiv.innerText = "";
-                    break;
-                case "complete":
-                    resultDiv.innerText = result || "Analysis complete, but no result was saved.";
-                    analyzeButton.innerText = "Re-analyze This Page";
-                    break;
-                case "failed":
-                    resultDiv.innerText = result || "Analysis failed. Please try again.";
-                    analyzeButton.innerText = "Try to Analyze Again";
-                    break;
-                default:
-                    resultDiv.innerText = "No analysis has been run for this page yet. Click the button to start.";
-                    analyzeButton.innerText = "Analyze Deals on This Page";
-            }
-        });
+  // Load last saved AI response on popup open
+  chrome.storage.local.get("last_ai_response", (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Popup script: Storage access error:", chrome.runtime.lastError);
+      resultDiv.innerText = "Failed to load previous AI result.";
+      return;
     }
+    const storedResponse = data.last_ai_response;
+    console.log("Popup script: On DOMContentLoaded, last_ai_response from storage:", storedResponse);
+    resultDiv.innerText = storedResponse || "No analysis has been run for this page yet. Click the button to start.";
+  });
 
-    // Manual analysis trigger
-    analyzeButton.addEventListener("click", () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length === 0) {
-                resultDiv.innerText = "No active tab found.";
-                return;
-            }
-            loadingDiv.style.display = "block";
-            loadingDiv.innerText = "Requesting analysis...";
-            analyzeButton.disabled = true;
-            resultDiv.innerText = "";
-            
-            chrome.tabs.sendMessage(tabs[0].id, { type: "start_deal_analysis" }, () => {
-                if (chrome.runtime.lastError) {
-                    resultDiv.innerText = "Could not communicate with the page. Try reloading it.";
-                    loadingDiv.style.display = "none";
-                    analyzeButton.disabled = false;
-                }
-                // The storage listener will handle the UI update once the result is ready.
-            });
-        });
-    });
+  analyzeButton.addEventListener("click", async () => {
+    resultDiv.innerText = ""; // Clear previous result
+    loadingDiv.style.display = "block"; // Show loading message
+    analyzeButton.disabled = true; // Disable button
+    console.log("Popup script: 'Analyze Deals' button clicked. Initiating analysis.");
 
-    // Listen for storage changes to update the UI in real-time
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === "local") {
-            const statusKey = `analysis_status_${currentTabUrl}`;
-            const resultKey = `analysis_result_${currentTabUrl}`;
-            if (changes[statusKey] || changes[resultKey]) {
-                updatePopupUI();
-            }
-        }
-    });
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs.length === 0) {
+        console.error("Popup script: No active tab found.");
+        resultDiv.innerText = "No active tab found.";
+        loadingDiv.style.display = "none";
+        analyzeButton.disabled = false;
+        return;
+      }
 
-    // Initial setup: Get current tab's URL and render the initial UI
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0] && tabs[0].url) {
-            currentTabUrl = tabs[0].url;
-            updatePopupUI();
+      const activeTabId = tabs[0].id;
+      console.log("Popup script: Active tab ID:", activeTabId);
+
+      try {
+        // Send a message to the content script and await its response
+        console.log("Popup script: Sending 'start_deal_analysis' message to content script.");
+        const response = await chrome.tabs.sendMessage(activeTabId, { type: "start_deal_analysis" });
+
+        console.log("Popup script: Received final response from content script:", response);
+
+        if (response && response.success) {
+            resultDiv.innerText = response.result;
+            console.log("Popup script: Analysis successful, UI updated with result.");
         } else {
-            resultDiv.innerText = "Unable to access tab information.";
-            analyzeButton.style.display = "none";
+            const errorMessage = response.error || "An unknown error occurred during analysis.";
+            resultDiv.innerText = `Analysis failed: ${errorMessage}`;
+            console.error("Popup script: Analysis failed, UI updated with error:", errorMessage);
         }
+      } catch (error) {
+        console.error("Popup script: Error during analysis (catch block):", error);
+        resultDiv.innerText = `An error occurred: ${error.message || "Please check console for details."}`;
+      } finally {
+        console.log("Popup script: Analysis process finished. Hiding loading and re-enabling button.");
+        loadingDiv.style.display = "none"; // Hide loading message
+        analyzeButton.disabled = false; // Re-enable button
+      }
     });
+  });
 });

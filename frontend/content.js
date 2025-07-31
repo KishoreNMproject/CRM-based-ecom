@@ -6,7 +6,6 @@ function extractSearchQuery() {
     const el = document.querySelector(`input[name="${name}"]`);
     if (el && el.value && el.value.length > 3) return el.value;
   }
-
   const urlParams = new URLSearchParams(window.location.search);
   for (const name of searchTriggers) {
     if (urlParams.has(name) && urlParams.get(name).length > 3) {
@@ -16,42 +15,54 @@ function extractSearchQuery() {
   return null;
 }
 
-// ✅ Use your actual backend
-const RENDER_BACKEND_URL = "https://crm-based-ecom.onrender.com/cluster-data";
+// --- IMPORTANT: Replace this with your actual Render.com backend's clustering URL ---
+const RENDER_BACKEND_URL = "[https://your-render-backend.onrender.com/cluster-data](https://your-render-backend.onrender.com/cluster-data)"; 
 
-// Send search query and context to backend
 async function sendDataToBackend(data) {
-  try {
-    const response = await fetch(RENDER_BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-      console.error(`Backend API error: ${response.status} ${response.statusText}`);
-      alert(`SmartShopper: Backend Error ${response.status}`);
-    } else {
-      const result = await response.json();
-      console.log("SmartShopper: Backend responded:", result);
-      // Optional: Handle/display result here
+    try {
+        const response = await fetch(RENDER_BACKEND_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            console.error(`Backend API error: ${response.status} ${response.statusText}`);
+        } else {
+            const result = await response.json();
+            console.log("Data sent to backend successfully:", result);
+        }
+    } catch (error) {
+        console.error("Error sending data to backend:", error);
     }
-
-  } catch (error) {
-    console.error("SmartShopper: Failed to send data:", error);
-    alert("SmartShopper: Backend unreachable. Try again in 30 seconds.");
-  }
 }
 
-// Trigger only on relevant pages (Amazon, Flipkart, etc.)
-window.addEventListener("load", () => {
-  const query = extractSearchQuery();
-  if (query) {
-    const data = {
-      query: query,
-      url: window.location.href,
-      timestamp: new Date().toISOString()
-    };
-    sendDataToBackend(data);
-  }
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === "start_deal_analysis") {
+        console.log("Content script: Received start_deal_analysis message from popup.");
+        
+        const query = extractSearchQuery();
+        const currentUrl = window.location.href;
+
+        if (query) {
+            sendDataToBackend({
+                userId: "user_id_placeholder", 
+                searchQuery: query,
+                timestamp: new Date().toISOString(),
+                urlVisited: currentUrl
+            });
+        }
+
+        chrome.runtime.sendMessage({
+            type: "analyze_deals",
+            query: query || "general online deals",
+            sourceUrl: currentUrl 
+        }, (responseFromBackground) => {
+            console.log("Content script: Received response from background script:", responseFromBackground);
+            sendResponse(responseFromBackground);
+        });
+
+        return true; 
+    }
 });
