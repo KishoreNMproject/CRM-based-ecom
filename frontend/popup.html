@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SmartShopper</title>
+  <style>
+    body { font-family: Arial; padding: 10px; width: 350px; } /* Set a fixed width */
+    #result { margin-top: 15px; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; } /* Preserve formatting */
+    #loading { margin-top: 10px; color: #888; font-style: italic; display: none; }
+    button { padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    button:disabled { background-color: #cccccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h3>SmartShopper AI</h3>
+  <button id="analyzeDeals">Analyze Deals on This Page</button>
+  <div id="loading">Analyzing deals... Please wait.</div>
+  <div id="result">No analysis performed yet. Click 'Analyze Deals'.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KMeans API</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <h1>🔮 KMeans Clustering API</h1>
+
+    <div class="buttons">
+        <form action="/train" method="get">
+            <button type="submit">Train Model</button>
+        </form>
+
+        <form action="/status" method="get">
+            <button type="submit">Check Model Status</button>
+        </form>
+    </div>
+
+    <h2>Try Prediction</h2>
+    <form method="post" action="/predict_form">
+        <label for="feature_input">Enter comma-separated features:</label><br>
+        <input type="text" id="feature_input" name="feature_input" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if prediction_result %}
+        <p class="result">{{ prediction_result }}</p>
+    {% endif %}
+</body>
+</html>
