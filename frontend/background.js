@@ -4,7 +4,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const sourceUrl = request.sourceUrl; // Received the source URL for context
 
     // !! WARNING: HARDCODED API KEY. Secure this for production!
-    const GEMINI_API_KEY = "AIzaSyCNVfelgsY7HGKCq5HKX1FC1ZmPuHbKzok"; 
+    const GEMINI_API_KEY = ""; 
     const MODEL_NAME = "gemini-1.5-flash"; 
 
     // --- Placeholder for your Render.com Backend URL ---
