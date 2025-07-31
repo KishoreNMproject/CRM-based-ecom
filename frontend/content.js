@@ -15,11 +15,23 @@ function extractSearchQuery() {
   return null;
 }
 
-// --- IMPORTANT: Replace this with your actual Render.com backend's clustering URL ---
-const RENDER_BACKEND_URL = "[https://your-render-backend.onrender.com/cluster-data](https://your-render-backend.onrender.com/cluster-data)"; 
+// NOTE: This URL is a placeholder. Update with your actual backend URL.
+const RENDER_BACKEND_URL = "https://your-customer-data-backend.onrender.com/cluster-data"; 
+
+// A simple way to generate a unique user ID for demonstration.
+// In a real application, you would use a more robust authentication system.
+function getUserId() {
+  let userId = localStorage.getItem('smartshopper_user_id');
+  if (!userId) {
+    userId = 'user_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('smartshopper_user_id', userId);
+  }
+  return userId;
+}
 
 async function sendDataToBackend(data) {
     try {
+        console.log("Content script: Attempting to send data to backend at:", RENDER_BACKEND_URL);
         const response = await fetch(RENDER_BACKEND_URL, {
             method: 'POST',
             headers: {
@@ -44,10 +56,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         const query = extractSearchQuery();
         const currentUrl = window.location.href;
+        const userId = getUserId();
 
+        // This is where we collect and send the user's data
         if (query) {
             sendDataToBackend({
-                userId: "user_id_placeholder", 
+                userId: userId, 
                 searchQuery: query,
                 timestamp: new Date().toISOString(),
                 urlVisited: currentUrl
@@ -57,7 +71,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.runtime.sendMessage({
             type: "analyze_deals",
             query: query || "general online deals",
-            sourceUrl: currentUrl 
+            sourceUrl: currentUrl,
+            userId: userId
         }, (responseFromBackground) => {
             console.log("Content script: Received response from background script:", responseFromBackground);
             sendResponse(responseFromBackground);
