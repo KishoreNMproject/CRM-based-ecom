@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "SmartShopper AI Extension",
+  "version": "1.0",
+  "description": "Get best AI deals, intelligent product suggestions, and behavior tracking.",
+  "permissions": ["scripting", "storage", "activeTab"],
+  "host_permissions": [
+    "*://*.flipkart.com/*",
+    "*://*.amazon.in/*",
+    "*://*.amazon.com/*",
+    "*://*.ebay.com/*",
+    "*://*.newegg.com/*",
+    "*://*.bestbuy.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
