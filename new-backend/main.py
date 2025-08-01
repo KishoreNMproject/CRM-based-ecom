@@ -61,14 +61,14 @@ def get_status():
 
 
 from fastapi import Body
-import httpx
+
 
 @app.post("/priceapi-proxy")
 async def priceapi_proxy(payload: dict):
     query = payload.get("query", "")
     country = payload.get("country", "in")
 
-    token = os.getenv("PRICEAPI_TOKEN")
+    token = os.getenv("PRICEAPI_TOKEN", "/etc/secrets/.env")
     if not token:
         return JSONResponse(content={"error": "Missing PRICEAPI_TOKEN in env"}, status_code=500)
 
