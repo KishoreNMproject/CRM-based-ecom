@@ -1,91 +1,39 @@
-// popup.js
 document.addEventListener("DOMContentLoaded", () => {
-    const analyzeButton = document.getElementById("analyzeDeals");
-    const resultDiv = document.getElementById("result");
-    const loadingDiv = document.getElementById("loading");
-    let currentTabUrl = '';
+  const resultsDiv = document.getElementById("results");
 
-    // Function to update the popup UI based on the cached status and result
-    function updatePopupUI() {
-        if (!currentTabUrl) {
-            resultDiv.innerText = "Could not identify the current page URL.";
-            return;
-        }
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, { type: "GET_PRODUCT_CONTEXT" }, (response) => {
+      if (response && response.title) {
+        fetchDeals(response.title);
+      } else {
+        resultsDiv.innerText = "Could not extract product details from this page.";
+      }
+    });
+  });
 
-        const resultKey = `analysis_result_${currentTabUrl}`;
-        const statusKey = `analysis_status_${currentTabUrl}`;
-
-        chrome.storage.local.get([resultKey, statusKey], (data) => {
-            const status = data[statusKey];
-            const result = data[resultKey];
-
-            loadingDiv.style.display = "none";
-            analyzeButton.disabled = false;
-
-            switch (status) {
-                case "fetching":
-                    loadingDiv.style.display = "block";
-                    loadingDiv.innerText = "AI analysis is running in the background...";
-                    analyzeButton.disabled = true;
-                    resultDiv.innerText = "";
-                    break;
-                case "complete":
-                    resultDiv.innerText = result || "Analysis complete, but no result was saved.";
-                    analyzeButton.innerText = "Re-analyze This Page";
-                    break;
-                case "failed":
-                    resultDiv.innerText = result || "Analysis failed. Please try again.";
-                    analyzeButton.innerText = "Try to Analyze Again";
-                    break;
-                default:
-                    resultDiv.innerText = "No analysis has been run for this page yet. Click the button to start.";
-                    analyzeButton.innerText = "Analyze Deals on This Page";
-            }
-        });
+  async function fetchDeals(query) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "<p>Searching best deals for: <b>" + query + "</b>...</p>";
+    try {
+      const res = await fetch("http://localhost:8000/priceapi-proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const deals = await res.json();
+      if (!deals || !Array.isArray(deals) || deals.length === 0) {
+        resultsDiv.innerHTML = "<p>No deals found.</p>";
+        return;
+      }
+      resultsDiv.innerHTML = deals.map(d => `
+        <div style="border-bottom:1px solid #ccc;padding:10px;">
+          <a href="${d.url}" target="_blank"><b>${d.name}</b></a><br/>
+          Price: ${d.price} | Site: ${d.site}<br/>
+          Rating: ${d.rating || 'N/A'} | Reviews: ${d.reviews || 'N/A'}
+        </div>
+      `).join("");
+    } catch (err) {
+      resultsDiv.innerHTML = "<p>Error fetching deals: " + err.message + "</p>";
     }
-
-    // Manual analysis trigger
-    analyzeButton.addEventListener("click", () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length === 0) {
-                resultDiv.innerText = "No active tab found.";
-                return;
-            }
-            loadingDiv.style.display = "block";
-            loadingDiv.innerText = "Requesting analysis...";
-            analyzeButton.disabled = true;
-            resultDiv.innerText = "";
-            
-            chrome.tabs.sendMessage(tabs[0].id, { type: "start_deal_analysis" }, () => {
-                if (chrome.runtime.lastError) {
-                    resultDiv.innerText = "Could not communicate with the page. Try reloading it.";
-                    loadingDiv.style.display = "none";
-                    analyzeButton.disabled = false;
-                }
-                // The storage listener will handle the UI update once the result is ready.
-            });
-        });
-    });
-
-    // Listen for storage changes to update the UI in real-time
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === "local") {
-            const statusKey = `analysis_status_${currentTabUrl}`;
-            const resultKey = `analysis_result_${currentTabUrl}`;
-            if (changes[statusKey] || changes[resultKey]) {
-                updatePopupUI();
-            }
-        }
-    });
-
-    // Initial setup: Get current tab's URL and render the initial UI
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0] && tabs[0].url) {
-            currentTabUrl = tabs[0].url;
-            updatePopupUI();
-        } else {
-            resultDiv.innerText = "Unable to access tab information.";
-            analyzeButton.style.display = "none";
-        }
-    });
+  }
 });
