@@ -9,20 +9,32 @@
 
   // Helper: extract search term from Amazon or Flipkart
   function getSearchQuery() {
-    // Try Amazon
-    const amazonSearchBox = document.querySelector("#twotabsearchtextbox");
-    if (amazonSearchBox && amazonSearchBox.value.trim() !== "") {
-      return amazonSearchBox.value.trim();
-    }
+  const url = window.location.href;
 
-    // Try Flipkart
-    const flipkartSearchBox = document.querySelector("input[type='text'][title='Search for products, brands and more']");
-    if (flipkartSearchBox && flipkartSearchBox.value.trim() !== "") {
-      return flipkartSearchBox.value.trim();
-    }
-
-    return null;
+  // Amazon
+  const amazonSearchBox = document.querySelector("#twotabsearchtextbox");
+  if (amazonSearchBox && amazonSearchBox.value.trim() !== "") {
+    return amazonSearchBox.value.trim();
   }
+
+  // Flipkart
+  const flipkartSearchBox = document.querySelector("input[type='text'][title='Search for products, brands and more']");
+  if (flipkartSearchBox && flipkartSearchBox.value.trim() !== "") {
+    return flipkartSearchBox.value.trim();
+  }
+
+  // Custom CRM site (adapt this selector to your site's actual HTML)
+  const crmSearchBox = document.querySelector("input[name='search']") || document.querySelector("input[type='search']");
+  if (crmSearchBox && crmSearchBox.value.trim() !== "") {
+    return crmSearchBox.value.trim();
+  }
+
+  // Try to extract from heading or title
+  const h1 = document.querySelector("h1")?.innerText;
+  if (h1 && h1.trim().length > 3) return h1.trim();
+
+  return null;
+}
 
   const query = getSearchQuery();
   const country = getCountryCode();
@@ -35,7 +47,7 @@
   console.log("🟢 Sending query to backend:", query, "| Country:", country);
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/priceapi-proxy", {
+    const response = await fetch("https://crm-based-ecom.onrender.com/priceapi-proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, country })
