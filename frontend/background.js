@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background script: Making a call to the Gemini proxy service.");
 
     // The URL for the backend proxy service, as you specified.
-    const priceApiUrl = "http://127.0.0.1:8000/priceapi-proxy";
+    const priceApiUrl = "https://crm-based-ecom.onrender.com/priceapi-proxy";
 
     // Function to handle fetch with exponential backoff retry logic
     const retryWithExponentialBackoff = async (url, options, retries = 5, delay = 1000) => {
