@@ -19,10 +19,7 @@ pip install -r backend/requirements.txt
 
 2. Start backend:
 ```bash
-uvicorn backend.main:app --reload
+uvicorn new-backend.main:app --reload
 ```
 
-3. Run dashboard:
-```bash
-python dashboard/app.py
-```
+
