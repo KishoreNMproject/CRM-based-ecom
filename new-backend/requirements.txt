@@ -7,3 +7,4 @@ scikit-learn
 joblib
 jinja2
 requests
+python-dotenv
