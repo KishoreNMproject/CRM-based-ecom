@@ -1,61 +1,23 @@
-(async () => {
-  // Helper: get country code based on domain
-  function getCountryCode() {
-    const hostname = window.location.hostname;
-    if (hostname.includes(".in")) return "in";
-    if (hostname.includes(".com")) return "us"; // or 'global'
-    return "us"; // default
-  }
+const { remote } = require('electron');
 
-  // Helper: extract search term from Amazon or Flipkart
-  function getSearchQuery() {
-  const url = window.location.href;
-
-  // Amazon
-  const amazonSearchBox = document.querySelector("#twotabsearchtextbox");
-  if (amazonSearchBox && amazonSearchBox.value.trim() !== "") {
-    return amazonSearchBox.value.trim();
-  }
-
-  // Flipkart
-  const flipkartSearchBox = document.querySelector("input[type='text'][title='Search for products, brands and more']");
-  if (flipkartSearchBox && flipkartSearchBox.value.trim() !== "") {
-    return flipkartSearchBox.value.trim();
-  }
-
-  // Custom CRM site (adapt this selector to your site's actual HTML)
-  const crmSearchBox = document.querySelector("input[name='search']") || document.querySelector("input[type='search']");
-  if (crmSearchBox && crmSearchBox.value.trim() !== "") {
-    return crmSearchBox.value.trim();
-  }
-
-  // Try to extract from heading or title
-  const h1 = document.querySelector("h1")?.innerText;
-  if (h1 && h1.trim().length > 3) return h1.trim();
-
-  return null;
+function getAmazonSearchURL(query, country) {
+    const url = `https://www.amazon.com/s?k=${encodeURIComponent(query)}&ref=nb_sb_noss_2&url=search-alias${country}`;
+    return url;
 }
 
-  const query = getSearchQuery();
-  const country = getCountryCode();
+function sendMessageToBackground(message) {
+    chrome.runtime.sendMessage({ message });
+}
 
-  if (!query) {
-    console.warn("No search query found on this page.");
-    return;
-  }
+function onQuerySubmit(event) {
+    const query = event.target.elements.query.value;
+    const country = event.target.elements.country.value;
+    const url = getAmazonSearchURL(query, country);
 
-  console.log("🟢 Sending query to backend:", query, "| Country:", country);
+    sendMessageToBackground({ action: 'navigate', url });
+}
 
-  try {
-    const response = await fetch("https://crm-based-ecom.onrender.com/priceapi-proxy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, country })
-    });
-
-    const result = await response.json();
-    console.log("📦 PriceAPI Result:", result);
-  } catch (err) {
-    console.error("❌ Failed to fetch price data:", err);
-  }
-})();
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('price-comparison-form');
+    form.addEventListener('submit', onQuerySubmit);
+});

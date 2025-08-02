@@ -12,10 +12,9 @@ from utils import (
 import os
 import requests # Import the requests library for making API calls
 from fastapi.responses import JSONResponse
-
-# You will need a .env file for local development, but Render will handle this.
-from dotenv import load_dotenv
-load_dotenv()
+import json
+from selenium import webdriver
+import time
 
 app = FastAPI()
 
@@ -68,71 +67,42 @@ async def priceapi_proxy(payload: dict):
     query = payload.get("query", "")
     country = payload.get("country", "in")
 
-    token = os.getenv("PRICEAPI_TOKEN", "/etc/secrets/.env")
-    if not token:
-        return JSONResponse(content={"error": "Missing PRICEAPI_TOKEN in env"}, status_code=500)
+    driver = webdriver.Chrome()  # Use Chrome browser for scraping
 
-    if not query:
-        return JSONResponse(content={"error": "Missing query"}, status_code=400)
+    driver.get(f"https://www.amazon.com/s?k={query}&ref=nb_sb_noss_2&url=search-alias{country}")
+    time.sleep(5)  # Wait for page to load
 
-    priceapi_url = "https://api.priceapi.com/v2/jobs"
-    data = {
-        "token": token,
-        "country": country,
-        "source": "amazon",
-        "topic": "search_results",
-        "key": "term",  # ✅ 'term' is valid
-        "values": query,
-        "max_age": "43200",
-        "location": "",
-    }
+    search_results = []
 
-    try:
-        job_response = requests.post(priceapi_url, data=data)
-        job_data = job_response.json()
-        print("🔍 PriceAPI Job Response:", job_data)
+    for item in driver.find_elements_by_xpath('//div[@class="a-section aok-relative s-result-item celwidget"]'):
+        title = item.find_element_by_xpath('.//h2[@class="a-size-medium product-title a-text-normal"]').text
+        price = item.find_element_by_xpath('.//span[@id="priceblock_ourprice"]/span[@class="a-price"]').text
+        rating = item.find_element_by_xpath('.//span[@class="a-icon-alt a-star-4-5"]').get_attribute("aria-labeledby")
 
-        job_id = job_data.get("job_id")
-        if not job_id:
-            return JSONResponse(content={"error": "Failed to fetch job ID from PriceAPI", "details": job_data}, status_code=500)
+        search_results.append({
+            "title": title,
+            "price": price,
+            "rating": rating
+        })
 
-        import time
-        result_url = f"https://api.priceapi.com/v2/jobs/{job_id}/download.json"
+    driver.quit()  # Close the browser after scraping is done
 
-        for _ in range(20):
-            result_response = requests.get(result_url, params={"token": token})
-            result_data = result_response.json()
-            status = result_data.get("status", "unknown")  # ✅ Define it
+    return JSONResponse(content=search_results)
 
-            print("⏳ Polling Result:", result_data)
+@app.post("/navigate")
+async def navigate(request: Request):
+    data = await request.json()
+    action, url = data["action"], data["url"]
 
-            
-            if status == "finished":
-                results = result_data.get("results", [])
-                if not results or not results[0].get("success", True):
-                    return JSONResponse(
-                        content={"error": "PriceAPI returned no results", "details": results},
-                        status_code=500
-                )
-                return result_data
+    if action == "navigate":
+        await navigation(url)
+    return {"status": "success"}
 
-            elif status in {"working", "new"}:
-                time.sleep(1)
-            else:
-                return JSONResponse(
-                    content={"error": "Unexpected job status", "details": result_data},
-                    status_code=500
-                )
+def navigation(url):
+    driver = webdriver.Chrome()
+    driver.get(url)
+    time.sleep(5)  # Wait for page to load
 
-        return JSONResponse(content={"error": "Job timed out. Try again later."}, status_code=504)
-
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
-    
-import pandas as pd
-
-# Load customer features at startup
-customer_df = pd.read_csv("full_customer_features.csv")
 
 @app.post("/assign-cluster")
 def assign_cluster(customer_id: int = Body(..., embed=True)):

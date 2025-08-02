@@ -74,3 +74,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+chrome.runtime.onMessageReceived.addListener(function (request, sender, sendResponse) {
+    if (request.action === 'navigate') {
+        const activeTabId = chrome.tabs.query({ active: true, currentWindow: true })[0].id;
+        chrome.tabs.update(activeTabId, { url: request.url });
+    }
+});
