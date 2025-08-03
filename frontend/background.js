@@ -1,4 +1,3 @@
-// background.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "analyze_deals") {
     const query = request.query;
@@ -8,7 +7,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background script: Received 'analyze_deals' request.");
     console.log("Background script: Making a call to the Gemini proxy service.");
 
-    // The URL for the backend proxy service, as you specified.
+    // The URL for the backend proxy service
     const priceApiUrl = "https://crm-based-ecom.onrender.com/priceapi-proxy";
 
     // Function to handle fetch with exponential backoff retry logic
@@ -40,7 +39,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       };
 
       try {
-        const response = await retryWithExponentialBackoff(geminiProxyUrl, {
+        const response = await retryWithExponentialBackoff(priceApiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -72,12 +71,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     processRequest();
     
     return true;
+  } else if (request.action === 'navigate') {
+    const activeTabId = chrome.tabs.query({ active: true, currentWindow: true })[0].id;
+    chrome.tabs.update(activeTabId, { url: request.url });
   }
-});
-
-chrome.runtime.onMessageReceived.addListener(function (request, sender, sendResponse) {
-    if (request.action === 'navigate') {
-        const activeTabId = chrome.tabs.query({ active: true, currentWindow: true })[0].id;
-        chrome.tabs.update(activeTabId, { url: request.url });
-    }
 });
