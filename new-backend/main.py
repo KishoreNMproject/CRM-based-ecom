@@ -11,6 +11,7 @@ from utils import (
 )
 import os
 import requests # Import the requests library for making API calls
+from utils import calculate_rfm, explain_shap, explain_lime, get_business_rules
 
 # You will need a .env file for local development, but Render will handle this.
 # from dotenv import load_dotenv
@@ -57,6 +58,23 @@ def get_status():
         return status or {"status": "no training yet"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/rfm")
+def get_rfm():
+    return calculate_rfm()
+
+@app.get("/shap")
+def get_shap():
+    return explain_shap()
+
+@app.get("/lime")
+def get_lime():
+    return explain_lime()
+
+@app.get("/rules")
+def get_rules():
+    return get_business_rules()
+
 
 @app.post("/gemini-proxy")
 async def gemini_proxy(request: Request):

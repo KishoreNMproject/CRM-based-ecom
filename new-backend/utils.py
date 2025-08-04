@@ -4,6 +4,11 @@ import joblib
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
+import numpy as np
+import shap
+import lime
+import lime.lime_tabular
+
 
 def load_features_from_csv(path="full_customer_features.csv"):
     try:
@@ -51,3 +56,53 @@ def load_train_status(path="train_status.json"):
             return json.load(f)
     except FileNotFoundError:
         return {}
+def calculate_rfm():
+    df = pd.read_pickle("full_customer_features.pkl")
+    model = joblib.load("model.pkl")  # RFM clustering model (KMeans)
+
+    features = df[['recency', 'frequency', 'monetary']]
+    scaler = joblib.load("scaler.pkl")
+    scaled = scaler.transform(features)
+
+    labels = model.predict(scaled)
+    cluster_counts = pd.Series(labels).value_counts().sort_index().to_dict()
+    return {f"Cluster {k}": int(v) for k, v in cluster_counts.items()}
+
+def explain_shap():
+    df = pd.read_pickle("full_customer_features.pkl")
+    model = joblib.load("model.pkl")
+    scaler = joblib.load("scaler.pkl")
+
+    X = scaler.transform(df[['recency', 'frequency', 'monetary']])
+    explainer = shap.KernelExplainer(model.predict, X[:100])
+    shap_values = explainer.shap_values(X[:1])
+
+    feature_names = ['recency', 'frequency', 'monetary']
+    shap_summary = dict(zip(feature_names, map(float, shap_values[0])))
+    return shap_summary
+
+def explain_lime():
+    df = pd.read_pickle("full_customer_features.pkl")
+    model = joblib.load("model.pkl")
+    scaler = joblib.load("scaler.pkl")
+
+    features = ['recency', 'frequency', 'monetary']
+    X = df[features]
+    scaled_X = scaler.transform(X)
+
+    explainer = lime.lime_tabular.LimeTabularExplainer(
+        scaled_X, feature_names=features, verbose=False, mode='classification'
+    )
+
+    explanation = explainer.explain_instance(scaled_X[0], model.predict, num_features=3)
+    return dict(explanation.as_list())
+
+def get_business_rules():
+    df = pd.read_pickle("full_customer_features.pkl")
+    rules = {
+        "High Value": df[df['monetary'] > df['monetary'].quantile(0.75)].shape[0],
+        "At Risk": df[df['recency'] > df['recency'].quantile(0.75)].shape[0],
+        "Churned": df[(df['frequency'] < 2) & (df['recency'] > df['recency'].median())].shape[0],
+        "New Customers": df[df['tenure'] < 30].shape[0] if 'tenure' in df.columns else 0
+    }
+    return rules

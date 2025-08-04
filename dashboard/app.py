@@ -1,33 +1,12 @@
+from flask import Flask, render_template, request
+from flask_cors import CORS
 
-import tkinter as tk
-from tkinter import ttk, messagebox
-import pandas as pd
-import matplotlib.pyplot as plt
+app = Flask(__name__)
+CORS(app)  # Allow frontend/backend communication
 
-def load_data():
-    try:
-        df = pd.read_csv("../backend/data/analytics_data.csv")
-        return df
-    except:
-        messagebox.showerror("Error", "Failed to load data.")
-        return pd.DataFrame()
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-def plot_data():
-    df = load_data()
-    if df.empty:
-        return
-    df['product'].value_counts().plot(kind='bar')
-    plt.title("Top Products")
-    plt.xlabel("Product")
-    plt.ylabel("Views")
-    plt.tight_layout()
-    plt.show()
-
-app = tk.Tk()
-app.title("Analyst Dashboard")
-app.geometry("400x200")
-
-btn = ttk.Button(app, text="Show Analytics", command=plot_data)
-btn.pack(pady=20)
-
-app.mainloop()
+if __name__ == "__main__":
+    app.run(debug=True)

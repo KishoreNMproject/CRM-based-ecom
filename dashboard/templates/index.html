@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analyst Dashboard</title>
+    <!-- Inside <head> -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Analyst Dashboard</h1>
+
+    <div class="section">
+        <label for="insightType">Select Insight Type:</label>
+        <select id="insightType">
+            <option value="rfm">RFM</option>
+            <option value="shap">SHAP</option>
+            <option value="lime">LIME</option>
+            <option value="rules">Business Rules</option>
+        </select>
+
+        <label for="chartType">Select Chart Type:</label>
+        <select id="chartType">
+            <option value="bar">Bar</option>
+            <option value="pie">Pie</option>
+            <option value="line">Line</option>
+            <option value="scatter">Scatter</option>
+            <option value="radar">Radar</option>
+        </select>
+
+        <button onclick="fetchAndRender()">Fetch & Render</button>
+    </div>
+
+    <div id="chartContainer">
+        <img id="chartImage" src="" alt="Chart will appear here" />
+    </div>
+
+    <!-- Before </body> -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
