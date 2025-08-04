@@ -12,5 +12,6 @@ joblib
 python-multipart
 jinja2
 scipy
+requests    
 matplotlib  # SHAP dependency
 shap==0.41.0
