@@ -35,10 +35,10 @@ def train_kmeans_with_elbow(data, max_k=10):
     final_model.fit(scaled)
     return final_model, elbow_k
 
-def save_model(model, path="model.pkl"):
+def save_model(model, path="model.csv"):
     joblib.dump(model, path)
 
-def load_model(path="model.pkl"):
+def load_model(path="model.csv"):
     return joblib.load(path)
 
 def save_train_status(n_clusters, data_points, path="train_status.json"):
@@ -57,11 +57,11 @@ def load_train_status(path="train_status.json"):
     except FileNotFoundError:
         return {}
 def calculate_rfm():
-    df = pd.read_pickle("full_customer_features.pkl")
-    model = joblib.load("model.pkl")  # RFM clustering model (KMeans)
+    df = pd.read_pickle("full_customer_features.csv")
+    model = joblib.load("model.csv")  # RFM clustering model (KMeans)
 
     features = df[['recency', 'frequency', 'monetary']]
-    scaler = joblib.load("scaler.pkl")
+    scaler = joblib.load("scaler.csv")
     scaled = scaler.transform(features)
 
     labels = model.predict(scaled)
@@ -69,9 +69,9 @@ def calculate_rfm():
     return {f"Cluster {k}": int(v) for k, v in cluster_counts.items()}
 
 def explain_shap():
-    df = pd.read_pickle("full_customer_features.pkl")
-    model = joblib.load("model.pkl")
-    scaler = joblib.load("scaler.pkl")
+    df = pd.read_pickle("full_customer_features.csv")
+    model = joblib.load("model.csv")
+    scaler = joblib.load("scaler.csv")
 
     X = scaler.transform(df[['recency', 'frequency', 'monetary']])
     explainer = shap.KernelExplainer(model.predict, X[:100])
@@ -82,9 +82,9 @@ def explain_shap():
     return shap_summary
 
 def explain_lime():
-    df = pd.read_pickle("full_customer_features.pkl")
-    model = joblib.load("model.pkl")
-    scaler = joblib.load("scaler.pkl")
+    df = pd.read_pickle("full_customer_features.csv")
+    model = joblib.load("model.csv")
+    scaler = joblib.load("scaler.csv")
 
     features = ['recency', 'frequency', 'monetary']
     X = df[features]
@@ -98,7 +98,7 @@ def explain_lime():
     return dict(explanation.as_list())
 
 def get_business_rules():
-    df = pd.read_pickle("full_customer_features.pkl")
+    df = pd.read_pickle("full_customer_features.csv")
     rules = {
         "High Value": df[df['monetary'] > df['monetary'].quantile(0.75)].shape[0],
         "At Risk": df[df['recency'] > df['recency'].quantile(0.75)].shape[0],
