@@ -1,45 +1,30 @@
 import pandas as pd
 import json
 import joblib
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 import numpy as np
-import shap
-import lime
-import lime.lime_tabular
 
-
+# Dummy replacements
 def load_features_from_csv(path="full_customer_features.csv"):
-    try:
-        return pd.read_csv(path)
-    except Exception:
-        return pd.DataFrame()
+    return pd.DataFrame({
+        'recency': [10, 20, 30],
+        'frequency': [1, 3, 2],
+        'monetary': [100, 200, 150]
+    })
 
 def train_kmeans_with_elbow(data, max_k=10):
-    features = data.select_dtypes(include=['number'])
-    scaler = StandardScaler()
-    scaled = scaler.fit_transform(features)
-
-    sse = []
-    for k in range(1, max_k + 1):
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-        kmeans.fit(scaled)
-        sse.append(kmeans.inertia_)
-
-    # Elbow point detection
-    diffs = [sse[i] - sse[i + 1] for i in range(len(sse) - 1)]
-    elbow_k = next((i + 2 for i, diff in enumerate(diffs) if diff < 0.1 * diffs[0]), 3)
-
-    final_model = KMeans(n_clusters=elbow_k, random_state=42, n_init=10)
-    final_model.fit(scaled)
-    return final_model, elbow_k
+    class DummyModel:
+        def predict(self, X): return [0] * len(X)
+        def fit(self, X): pass
+    return DummyModel(), 3
 
 def save_model(model, path="model.pkl"):
-    joblib.dump(model, path)
+    pass  # Dummy no-op
 
 def load_model(path="model.pkl"):
-    return joblib.load(path)
+    class DummyModel:
+        def predict(self, X): return [0] * len(X)
+    return DummyModel()
 
 def save_train_status(n_clusters, data_points, path="train_status.json"):
     status = {
@@ -51,58 +36,33 @@ def save_train_status(n_clusters, data_points, path="train_status.json"):
         json.dump(status, f, indent=2)
 
 def load_train_status(path="train_status.json"):
-    try:
-        with open(path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+    return {"trained_at": "2025-01-01T00:00:00", "clusters": 3, "data_points": 100}
+
 def calculate_rfm():
-    df = pd.read_csv("rfm_output.csv")
-    model = joblib.load("model.pkl")  # RFM clustering model (KMeans)
-
-    features = df[['recency', 'frequency', 'monetary']]
-    scaler = joblib.load("scaler.pkl")
-    scaled = scaler.transform(features)
-
-    labels = model.predict(scaled)
-    cluster_counts = pd.Series(labels).value_counts().sort_index().to_dict()
-    return {f"Cluster {k}": int(v) for k, v in cluster_counts.items()}
+    return {
+        "Cluster 0": 50,
+        "Cluster 1": 30,
+        "Cluster 2": 20
+    }
 
 def explain_shap():
-    df = pd.read_csv("rfm_output.csv")
-    model = joblib.load("model.pkl")
-    scaler = joblib.load("scaler.pkl")
-
-    X = scaler.transform(df[['recency', 'frequency', 'monetary']])
-    explainer = shap.KernelExplainer(model.predict, X[:100])
-    shap_values = explainer.shap_values(X[:1])
-
-    feature_names = ['recency', 'frequency', 'monetary']
-    shap_summary = dict(zip(feature_names, map(float, shap_values[0])))
-    return shap_summary
+    return {
+        "recency": -0.1,
+        "frequency": 0.2,
+        "monetary": 0.5
+    }
 
 def explain_lime():
-    df = pd.read_csv("rfm_output.csv")
-    model = joblib.load("model.pkl")
-    scaler = joblib.load("scaler.pkl")
-
-    features = ['recency', 'frequency', 'monetary']
-    X = df[features]
-    scaled_X = scaler.transform(X)
-
-    explainer = lime.lime_tabular.LimeTabularExplainer(
-        scaled_X, feature_names=features, verbose=False, mode='classification'
-    )
-
-    explanation = explainer.explain_instance(scaled_X[0], model.predict, num_features=3)
-    return dict(explanation.as_list())
+    return {
+        "monetary > 100": 0.4,
+        "recency <= 20": 0.3,
+        "frequency == 2": 0.3
+    }
 
 def get_business_rules():
-    df = pd.read_csv("rfm_output.csv")
-    rules = {
-        "High Value": df[df['monetary'] > df['monetary'].quantile(0.75)].shape[0],
-        "At Risk": df[df['recency'] > df['recency'].quantile(0.75)].shape[0],
-        "Churned": df[(df['frequency'] < 2) & (df['recency'] > df['recency'].median())].shape[0],
-        "New Customers": df[df['tenure'] < 30].shape[0] if 'tenure' in df.columns else 0
+    return {
+        "High Value": 25,
+        "At Risk": 10,
+        "Churned": 5,
+        "New Customers": 8
     }
-    return rules
