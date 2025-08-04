@@ -1,0 +1,5 @@
+BusinessRule
+|--- Frequency <= 4.00
+|   |--- class: 0
+|--- Frequency >  4.00
+|   |--- class: 1

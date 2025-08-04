@@ -57,21 +57,6 @@ def get_customer(customer_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ✅ Chart-friendly SHAP output
-@app.get("/shap")
-def shap_explanation():
-    try:
-        shap_result = explain_shap(df, target_column="Cluster")
-        if isinstance(shap_result, dict):
-            return {
-                "labels": list(shap_result.keys()),
-                "values": list(shap_result.values())
-            }
-        else:
-            return shap_result  # fallback
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 # ✅ Chart-friendly LIME for customer
 @app.get("/lime")

@@ -76,106 +76,19 @@ def get_customer_profile(df, customer_id):
 
 
 
-def calculate_rfm(df):
-    # Basic cleaning
-    df = df.dropna(subset=["CustomerID"])
-    df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"])
-    df["TotalAmount"] = df["Quantity"] * df["UnitPrice"]
+import pandas as pd
+import os
 
-    # Latest date in data + 1
-    snapshot_date = df["InvoiceDate"].max() + pd.Timedelta(days=1)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    # RFM Calculation
-    rfm = df.groupby("CustomerID").agg({
-        "InvoiceDate": lambda x: (snapshot_date - x.max()).days,
-        "InvoiceNo": "nunique",
-        "TotalAmount": "sum"
-    })
+def load_rfm_output():
+    path = os.path.join(BASE_DIR, "rfm_output.csv")
+    return pd.read_csv(path).to_dict(orient="records")
 
-    rfm.columns = ["Recency", "Frequency", "Monetary"]
+def load_lime_output():
+    path = os.path.join(BASE_DIR, "lime.csv")
+    return pd.read_csv(path).to_dict(orient="records")
 
-    # Remove negative or zero values before clustering
-    rfm = rfm[rfm["Monetary"] > 0]
-
-    # Normalize for clustering
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    rfm_scaled = scaler.fit_transform(rfm)
-
-    # KMeans Clustering
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    rfm["Cluster"] = kmeans.fit_predict(rfm_scaled)
-
-    # Save output
-    os.makedirs("data", exist_ok=True)
-    rfm.to_csv("data/rfm_output.csv")
-
-    return rfm
-
-def explain_shap(df, target_column, num_rows=500):
-    df = df.dropna().sample(min(num_rows, len(df)), random_state=1)
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
-
-    if not all(np.issubdtype(dt, np.number) for dt in X.dtypes):
-        X = pd.get_dummies(X)
-
-    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=1)
-    model = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=1)
-    model.fit(X_train, y_train)
-
-    explainer = shap.Explainer(model.predict, X_train, algorithm="permutation")
-    shap_values = explainer(X_train[:50], check_additivity=False)
-
-    try:
-        summary = shap_values.values.mean(axis=0)
-    except Exception:
-        summary = np.mean(np.abs(shap_values.data), axis=0)
-
-    return {
-        "feature_names": list(X_train.columns),
-        "mean_abs_shap_values": list(np.abs(summary))
-    }
-
-def explain_lime(df, target_column, num_features=5):
-    df = df.dropna().copy()
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
-
-    if not all(np.issubdtype(dt, np.number) for dt in X.dtypes):
-        X = pd.get_dummies(X)
-
-    X_train, _, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=1)
-    model = RandomForestClassifier(n_estimators=25, max_depth=5, random_state=1)
-    model.fit(X_train, y_train)
-
-    explainer = lime.lime_tabular.LimeTabularExplainer(
-        X_train.values,
-        feature_names=X_train.columns.tolist(),
-        class_names=np.unique(y_train).astype(str).tolist(),
-        discretize_continuous=True
-    )
-
-    exp = explainer.explain_instance(X_train.iloc[0].values, model.predict_proba, num_features=num_features)
-    explanation = dict(exp.as_list())
-    return explanation
-
-def get_business_rules(df):
-    try:
-        rules = []
-
-        if 'Quantity' in df.columns:
-            avg_quantity = df['Quantity'].mean()
-            rules.append(f"Average purchase quantity is {avg_quantity:.2f} units.")
-
-        if 'Price' in df.columns:
-            high_value_items = df[df['Price'] > df['Price'].quantile(0.95)]
-            rules.append(f"Top 5% high value items: {high_value_items['Description'].nunique()} unique items.")
-
-        if 'Country' in df.columns:
-            top_country = df['Country'].value_counts().idxmax()
-            rules.append(f"Most orders come from {top_country}.")
-
-        return {"rules": rules}
-    except Exception as e:
-        return {"error": str(e)}
+def load_business_rules():
+    path = os.path.join(BASE_DIR, "business_rules.csv")
+    return pd.read_csv(path).to_dict(orient="records")
