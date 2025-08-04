@@ -57,7 +57,7 @@ def load_train_status(path="train_status.json"):
     except FileNotFoundError:
         return {}
 def calculate_rfm():
-    df = pd.read_pickle("full_customer_features.csv")
+    df = pd.read_csv("full_customer_features.csv")
     model = joblib.load("model.csv")  # RFM clustering model (KMeans)
 
     features = df[['recency', 'frequency', 'monetary']]
@@ -69,7 +69,7 @@ def calculate_rfm():
     return {f"Cluster {k}": int(v) for k, v in cluster_counts.items()}
 
 def explain_shap():
-    df = pd.read_pickle("full_customer_features.csv")
+    df = pd.read_csv("full_customer_features.csv")
     model = joblib.load("model.csv")
     scaler = joblib.load("scaler.csv")
 
@@ -82,7 +82,7 @@ def explain_shap():
     return shap_summary
 
 def explain_lime():
-    df = pd.read_pickle("full_customer_features.csv")
+    df = pd.read_csv("full_customer_features.csv")
     model = joblib.load("model.csv")
     scaler = joblib.load("scaler.csv")
 
@@ -98,7 +98,7 @@ def explain_lime():
     return dict(explanation.as_list())
 
 def get_business_rules():
-    df = pd.read_pickle("full_customer_features.csv")
+    df = pd.read_csv("full_customer_features.csv")
     rules = {
         "High Value": df[df['monetary'] > df['monetary'].quantile(0.75)].shape[0],
         "At Risk": df[df['recency'] > df['recency'].quantile(0.75)].shape[0],
