@@ -1,4 +1,4 @@
-CustomerID,Recency,Frequency,Monetary
+CustomerID,recency,frequency,monetary
 101,368,5,75.5
 102,371,3,90.0
 103,385,3,23.0
