@@ -35,10 +35,10 @@ def train_kmeans_with_elbow(data, max_k=10):
     final_model.fit(scaled)
     return final_model, elbow_k
 
-def save_model(model, path="model.csv"):
+def save_model(model, path="model.pkl"):
     joblib.dump(model, path)
 
-def load_model(path="model.csv"):
+def load_model(path="model.pkl"):
     return joblib.load(path)
 
 def save_train_status(n_clusters, data_points, path="train_status.json"):
@@ -58,10 +58,10 @@ def load_train_status(path="train_status.json"):
         return {}
 def calculate_rfm():
     df = pd.read_csv("full_customer_features.csv")
-    model = joblib.load("model.csv")  # RFM clustering model (KMeans)
+    model = joblib.load("model.pkl")  # RFM clustering model (KMeans)
 
     features = df[['recency', 'frequency', 'monetary']]
-    scaler = joblib.load("scaler.csv")
+    scaler = joblib.load("scaler.pkl")
     scaled = scaler.transform(features)
 
     labels = model.predict(scaled)
@@ -70,8 +70,8 @@ def calculate_rfm():
 
 def explain_shap():
     df = pd.read_csv("full_customer_features.csv")
-    model = joblib.load("model.csv")
-    scaler = joblib.load("scaler.csv")
+    model = joblib.load("model.pkl")
+    scaler = joblib.load("scaler.pkl")
 
     X = scaler.transform(df[['recency', 'frequency', 'monetary']])
     explainer = shap.KernelExplainer(model.predict, X[:100])
@@ -83,8 +83,8 @@ def explain_shap():
 
 def explain_lime():
     df = pd.read_csv("full_customer_features.csv")
-    model = joblib.load("model.csv")
-    scaler = joblib.load("scaler.csv")
+    model = joblib.load("model.pkl")
+    scaler = joblib.load("scaler.pkl")
 
     features = ['recency', 'frequency', 'monetary']
     X = df[features]
