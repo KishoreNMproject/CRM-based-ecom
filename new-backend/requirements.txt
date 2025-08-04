@@ -1,10 +1,4 @@
 setuptools>=42
-wheel
-build
-fastapi
-uvicorn
-pandas
-numpy>=1.26.0   
 scikit-learn
 shap
 lime
@@ -14,4 +8,12 @@ jinja2
 scipy
 requests    
 matplotlib  # SHAP dependency
-shap==0.41.0
+wheel
+build
+fastapi
+uvicorn
+pandas
+numpy<2.0.0
+scikit-learn
+shap==0.44.1
+
