@@ -1,4 +1,4 @@
-CustomerID,Recency,Frequency,Monetary,Cluster
+CustomerID,recency,frequency,monetary,cluster
 12346,5307,12,77556.46,3
 12347,4983,8,4921.53,0
 12348,5057,5,2019.4,0
