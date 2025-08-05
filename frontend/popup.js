@@ -42,8 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Popup script: Received final response from content script:", response);
 
         if (response && response.success) {
-            resultDiv.innerText = response.result;
-            console.log("Popup script: Analysis successful, UI updated with result.");
+    // Convert **text** to <strong>text</strong> for bold formatting
+    const formattedResult = response.result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    resultDiv.innerHTML = formattedResult;
+    console.log("Popup script: Analysis successful, UI updated with result.");
+}
         } else {
             const errorMessage = response.error || "An unknown error occurred during analysis.";
             resultDiv.innerText = `Analysis failed: ${errorMessage}`;
